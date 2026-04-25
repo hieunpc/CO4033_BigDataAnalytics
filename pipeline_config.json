@@ -1,0 +1,10 @@
+{
+  "input_csv": "data/raw/BRFSS.csv",
+  "selected_csv": "data/processed/selected_columns.csv",
+  "use_kafka": true,
+  "kafka_topic": "brfss_health_setup_v1",
+  "kafka_bootstrap_servers": "localhost:9092",
+  "metrics_path": "outputs/metrics/metrics.json",
+  "spark_metrics_path": "outputs/metrics/spark_metrics.json",
+  "plot_dir": "outputs/metrics/plots"
+}
