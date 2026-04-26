@@ -6,5 +6,6 @@
   "kafka_bootstrap_servers": "localhost:9092",
   "metrics_path": "outputs/metrics/metrics.json",
   "spark_metrics_path": "outputs/metrics/spark_metrics.json",
-  "plot_dir": "outputs/metrics/plots"
+  "plot_dir": "outputs/metrics/plots",
+  "runtime_metadata_path": "outputs/metrics/pipeline_runtime.json"
 }

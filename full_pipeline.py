@@ -42,6 +42,7 @@ def load_config(config_path: Path) -> dict:
         "metrics_path": str(DEFAULT_METRICS_PATH),
         "spark_metrics_path": "outputs/metrics/spark_metrics.json",
         "plot_dir": "outputs/metrics/plots",
+        "runtime_metadata_path": "outputs/metrics/pipeline_runtime.json",
     }
 
     if not config_path.exists():
@@ -66,6 +67,7 @@ def main() -> None:
         metrics_path=config["metrics_path"],
         spark_metrics_path=config["spark_metrics_path"],
         plot_dir=config["plot_dir"],
+        runtime_metadata_path=config["runtime_metadata_path"],
     )
     logger.info("Pipeline run finished with %d model results", len(payload))
     print(json.dumps(payload, indent=2))

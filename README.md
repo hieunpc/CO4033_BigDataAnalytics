@@ -55,16 +55,26 @@ py full_pipeline.py
 - `metrics_path`: metrics tổng
 - `spark_metrics_path`: metrics Spark
 - `plot_dir`: nơi lưu biểu đồ
+- `runtime_metadata_path`: nơi lưu metadata runtime của pipeline
 
 ## Kết Quả Đầu Ra
 
 - `outputs/metrics/metrics.json`
 - `outputs/metrics/spark_metrics.json`
 - `outputs/metrics/best_model.json`
+- `outputs/metrics/pipeline_runtime.json`
 - `outputs/metrics/plots/spark_metric_accuracy.png`
 - `outputs/metrics/plots/spark_metric_f1.png`
 - `outputs/metrics/plots/spark_metric_roc_auc.png`
 - `outputs/logs/pipeline.log`
+
+`pipeline_runtime.json` ghi metadata của mỗi lần chạy như:
+
+- trạng thái chạy (`success`/`failed`)
+- thời điểm bắt đầu/kết thúc và tổng thời gian
+- tham số input/output chính (csv, kafka, metrics paths)
+- danh sách model, best model
+- thời gian từng bước (feature selection, kafka publish, spark train, export plot)
 
 ## Các Model Đang Dùng
 
@@ -127,4 +137,5 @@ Lưu ý: `pipeline_config.json` hiện chưa cấu hình danh sách model. Nếu
 ```powershell
 python -m brfss_pipeline.cli run-all --use-kafka
 python -m brfss_pipeline.cli spark-train --input-path data/processed/selected_columns.csv --output-path outputs/metrics/spark_metrics.json
+python -m brfss_pipeline.cli run-all --use-kafka --runtime-metadata-path outputs/metrics/pipeline_runtime.json
 ```

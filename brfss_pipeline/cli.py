@@ -46,6 +46,7 @@ def parse_args() -> argparse.Namespace:
     r_parser.add_argument("--metrics-path", default=str(DEFAULT_METRICS_PATH))
     r_parser.add_argument("--spark-metrics-path", default="outputs/metrics/spark_metrics.json")
     r_parser.add_argument("--plot-dir", default="outputs/metrics/plots")
+    r_parser.add_argument("--runtime-metadata-path", default="outputs/metrics/pipeline_runtime.json")
 
     return parser.parse_args()
 
@@ -92,6 +93,7 @@ def main() -> None:
             metrics_path=args.metrics_path,
             spark_metrics_path=args.spark_metrics_path,
             plot_dir=args.plot_dir,
+            runtime_metadata_path=args.runtime_metadata_path,
         )
         print(json.dumps(payload, indent=2))
         return
