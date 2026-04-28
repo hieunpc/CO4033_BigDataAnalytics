@@ -85,8 +85,11 @@ jupyter notebook BI/bi_analysis.ipynb
 
 ### 3.3 - Streamlit Dashboard (BI/bi_dashboard.py)
 ```powershell
-# Bước 3.3.1: Chạy batch file (tự động setup nếu cần)
-.\BI\run_dashboard.bat
+# Bước 3.3.1: Kích hoạt virtual environment
+.venv\Scripts\activate
+
+# Bước 3.3.2: Chạy dashboard với Streamlit
+streamlit run BI/bi_dashboard.py
 ```
 
 **Output**: Web app chạy trên http://localhost:8503 với 4 trang: Overview, Data Analysis, Model Performance, Visualizations.

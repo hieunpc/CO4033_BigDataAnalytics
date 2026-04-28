@@ -84,9 +84,10 @@ Phần BI (Business Intelligence) của dự án này tập trung vào việc tr
    jupyter notebook bi_analysis.ipynb
    ```
 
-3. **Streamlit Dashboard** (web app - ĐANG CHẠY):
+3. **Streamlit Dashboard** (web app):
    ```powershell
-   .\run_dashboard.bat
+   .venv\Scripts\activate
+   streamlit run BI/bi_dashboard.py
    ```
    **Truy cập**: http://localhost:8503
    - Overview với KPIs
@@ -148,7 +149,7 @@ accuracy: 0.85
 - Plots bị skip do Windows Application Control policy chặn matplotlib DLLs
 - Để visualizations: sử dụng Jupyter notebook, hoặc alternative libraries như plotly
 - Streamlit dashboard cung cấp trải nghiệm BI tương tác nhất với web interface
-- Nếu streamlit không chạy: dùng `.\run_dashboard.bat` để auto-setup
+- Nếu streamlit không chạy: kiểm tra port 8503 hoặc cài đặt streamlit lại với `pip install streamlit`
 - Có thể mở rộng script để thêm analysis khác như clustering insights, feature importance
 
 ## Cấu trúc file
@@ -156,6 +157,5 @@ accuracy: 0.85
 bi_analysis.py          # Script phân tích BI (stats và metrics)
 bi_analysis.ipynb       # Jupyter notebook cho BI analysis đầy đủ
 bi_dashboard.py         # Streamlit web dashboard cho BI interactive
-run_dashboard.bat       # Batch file để chạy dashboard dễ dàng
 outputs/metrics/plots/  # Plots từ pipeline (spark_metric_*.png)
 ```
