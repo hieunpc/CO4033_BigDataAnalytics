@@ -1,64 +1,225 @@
-# BRFSS Kafka + Spark Pipeline
+# BRFSS Big Data Analytics
 
-## Flow Hệ Thống
+Project này xây dựng một luồng xử lý dữ liệu BRFSS theo hướng end-to-end: feature selection, tùy chọn đẩy sang Kafka, train mô hình bằng Spark, rồi tổng hợp metrics và dashboard BI để phân tích kết quả.
+
+## Tổng Quan Kiến Trúc
 
 ```text
-BRFSS.csv
+data/raw/BRFSS.csv
   -> Feature Selection
-  -> selected_columns.csv
+  -> data/processed/selected_columns.csv
   -> (optional) Kafka publish
-  -> Spark train (full selected data)
-  -> metrics.json / spark_metrics.json / best_model.json
-  -> spark_metric_*.png
+  -> Spark training
+  -> outputs/metrics/*.json
+  -> outputs/metrics/plots/*.png
+  -> BI analysis + Streamlit dashboard
 ```
 
-## Cấu Trúc Quan Trọng
+## Thành Phần Chính
 
-- `brfss_pipeline/pipeline/full_pipeline.py`: điều phối end-to-end
-- `brfss_pipeline/streaming/kafka_io.py`: publish selected data lên Kafka
-- `brfss_pipeline/streaming/spark_io.py`: Spark session + Spark model training
-- `pipeline_config.json`: cấu hình chạy
-- `full_pipeline.py`: entrypoint đơn giản nhất
+- `full_pipeline.py`: entrypoint chạy toàn bộ pipeline theo `pipeline_config.json`
+- `brfss_pipeline/pipeline/full_pipeline.py`: logic điều phối end-to-end
+- `brfss_pipeline/data/feature_selection.py`: chọn bộ cột đầu vào cho mô hình
+- `brfss_pipeline/streaming/kafka_io.py`: publish dữ liệu đã chọn lên Kafka
+- `brfss_pipeline/streaming/spark_io.py`: train Spark ML và xuất metrics/plots
+- `brfss_pipeline/cli.py`: CLI để chạy từng bước riêng lẻ
+- `BI/bi_analysis.py`: phân tích BI dạng console
+- `BI/bi_analysis.ipynb`: notebook BI tương tác
+- `BI/bi_dashboard.py`: dashboard Streamlit
 
 ## Cài Đặt
 
+1. Tạo và kích hoạt virtual environment `.venv` nếu chưa có.
+2. Cài dependencies:
+
 ```powershell
+python -m pip install --upgrade pip
 pip install -r requirements-bigdata.txt
 ```
 
-## Chạy Kafka (Docker)
+## Dữ Liệu Đầu Vào
+
+Pipeline mặc định đọc:
+
+- `data/raw/BRFSS.csv`
+
+Nếu file này chưa có, cần đặt dữ liệu BRFSS gốc vào đúng vị trí trước khi chạy pipeline.
+
+## Chạy Kafka Với Docker
+
+Kafka là tùy chọn. Chỉ cần bật khi muốn publish dữ liệu đã chọn sang broker.
 
 ```powershell
 docker compose -f docker-compose.kafka.yml up -d
 docker compose -f docker-compose.kafka.yml ps
 ```
 
-Broker mặc định: `localhost:9092`
+Broker mặc định:
 
-## Chạy Pipeline (Khuyến nghị)
+- `localhost:9092`
 
-1. Sửa cấu hình trong `pipeline_config.json` nếu cần
+## Chạy Full Pipeline
 
-2. Chạy một lệnh:
+### Cách 1: Chạy entrypoint gốc
 
 ```powershell
-py full_pipeline.py
+python full_pipeline.py
 ```
 
-## Cấu Hình Chính (`pipeline_config.json`)
+Script này sẽ:
 
-- `input_csv`: dữ liệu gốc
-- `selected_csv`: dữ liệu sau feature selection
-- `use_kafka`: bật/tắt publish Kafka
-- `kafka_topic`: topic Kafka
-- `kafka_bootstrap_servers`: Kafka endpoint
-- `metrics_path`: metrics tổng
-- `spark_metrics_path`: metrics Spark
-- `plot_dir`: nơi lưu biểu đồ
-- `runtime_metadata_path`: nơi lưu metadata runtime của pipeline
+1. Load cấu hình từ `pipeline_config.json`
+2. Thực hiện feature selection
+3. Publish Kafka nếu `use_kafka=true`
+4. Train Spark models
+5. Xuất metrics, best model, runtime metadata và plots
 
-## Kết Quả Đầu Ra
+### Cách 2: Chạy qua CLI
 
+```powershell
+python -m brfss_pipeline.cli run-all
+```
+
+Muốn bật Kafka:
+
+```powershell
+python -m brfss_pipeline.cli run-all --use-kafka
+```
+
+### Cấu Hình Chính
+
+File `pipeline_config.json` điều khiển toàn bộ pipeline:
+
+- `input_csv`: file dữ liệu gốc
+- `selected_csv`: file sau feature selection
+- `use_kafka`: bật hoặc tắt bước publish Kafka
+- `kafka_topic`: tên topic Kafka
+- `kafka_bootstrap_servers`: địa chỉ Kafka broker
+- `metrics_path`: nơi lưu metrics tổng
+- `spark_metrics_path`: nơi lưu metrics Spark
+- `plot_dir`: thư mục lưu biểu đồ
+- `runtime_metadata_path`: nơi lưu metadata mỗi lần chạy
+
+## Chạy Từng Bước Riêng Lẻ
+
+### Feature Selection
+
+```powershell
+python -m brfss_pipeline.cli feature-select --input-path data/raw/BRFSS.csv --output-path data/processed/selected_columns.csv
+```
+
+### Publish Kafka
+
+```powershell
+python -m brfss_pipeline.cli kafka-produce --csv-path data/processed/selected_columns.csv --bootstrap-servers localhost:9092 --topic brfss_health
+```
+
+### Train Spark Riêng
+
+```powershell
+python -m brfss_pipeline.cli spark-train --input-path data/processed/selected_columns.csv --output-path outputs/metrics/spark_metrics.json --plot-dir outputs/metrics/plots
+```
+
+## Kiến Trúc Pipeline
+
+Luồng chạy chính là:
+
+1. Đọc `data/raw/BRFSS.csv`
+2. Chọn ra tập cột trong `brfss_pipeline/config.py`
+3. Ghi `data/processed/selected_columns.csv`
+4. Nếu bật Kafka, publish dữ liệu đã chọn lên topic cấu hình
+5. Khởi tạo Spark session và train 3 mô hình phân loại nhị phân
+6. Tính metrics, chọn best model, xuất confusion matrix và bar chart
+7. Ghi runtime metadata để truy vết toàn bộ phiên chạy
+
+### Mô Hình Spark
+
+Hiện tại Spark training đang dùng 3 mô hình:
+
+- `logistic_regression`
+- `random_forest`
+- `decision_tree`
+
+Mỗi mô hình được đánh giá theo:
+
+- `accuracy`
+- `precision`
+- `recall`
+- `f1`
+- `roc_auc`
+- `specificity`
+- `confusion_matrix`
+
+Best model được xếp theo thứ tự ưu tiên:
+
+1. `f1`
+2. `roc_auc`
+3. `accuracy`
+
+### Chỉnh Model
+
+Nếu muốn đổi model hoặc hyperparameter, chỉnh trong `brfss_pipeline/streaming/spark_io.py` tại hàm `train_spark_models(...)`.
+
+Sau khi sửa, chạy lại:
+
+```powershell
+python full_pipeline.py
+```
+
+Hoặc chỉ chạy Spark:
+
+```powershell
+python -m brfss_pipeline.cli spark-train --input-path data/processed/selected_columns.csv
+```
+
+## Phần BI
+
+BI dùng lại output của pipeline để trình bày dữ liệu, metrics và visualizations.
+
+### 1. Console Analysis
+
+```powershell
+python BI/bi_analysis.py
+```
+
+Script này sẽ:
+
+- đọc `data/processed/selected_columns.csv`
+- in thống kê mô tả dữ liệu
+- đọc `outputs/metrics/metrics.json`
+- đọc `outputs/metrics/spark_metrics.json`
+- liệt kê các biểu đồ đã tạo trong `outputs/metrics/plots/`
+
+### 2. Notebook BI
+
+```powershell
+jupyter notebook BI/bi_analysis.ipynb
+```
+
+Notebook phù hợp khi muốn phân tích tương tác, trực quan hóa sâu hơn và thử nghiệm thêm chỉ số.
+
+### 3. Streamlit Dashboard
+
+```powershell
+streamlit run BI/bi_dashboard.py
+```
+
+Dashboard mặc định chạy tại:
+
+- `http://localhost:8501`
+
+Các trang chính:
+
+- `Overview`
+- `Data Analysis`
+- `Model Performance`
+- `Visualizations`
+
+## Output Sinh Ra
+
+Sau khi pipeline chạy thành công, các file quan trọng thường nằm ở:
+
+- `data/processed/selected_columns.csv`
 - `outputs/metrics/metrics.json`
 - `outputs/metrics/spark_metrics.json`
 - `outputs/metrics/best_model.json`
@@ -66,76 +227,52 @@ py full_pipeline.py
 - `outputs/metrics/plots/spark_metric_accuracy.png`
 - `outputs/metrics/plots/spark_metric_f1.png`
 - `outputs/metrics/plots/spark_metric_roc_auc.png`
+- `outputs/metrics/plots/spark_confusion_matrix_decision_tree.png`
+- `outputs/metrics/plots/spark_confusion_matrix_logistic_regression.png`
+- `outputs/metrics/plots/spark_confusion_matrix_random_forest.png`
 - `outputs/logs/pipeline.log`
 
-`pipeline_runtime.json` ghi metadata của mỗi lần chạy như:
+`pipeline_runtime.json` lưu lại:
 
-- trạng thái chạy (`success`/`failed`)
-- thời điểm bắt đầu/kết thúc và tổng thời gian
-- tham số input/output chính (csv, kafka, metrics paths)
-- danh sách model, best model
-- thời gian từng bước (feature selection, kafka publish, spark train, export plot)
+- trạng thái chạy `success` hoặc `failed`
+- thời gian bắt đầu/kết thúc và tổng duration
+- tham số input/output của phiên chạy
+- danh sách model và best model
+- thời gian cho từng bước của pipeline
+- danh sách file biểu đồ đã xuất
 
-## Các Model Đang Dùng
+## Cấu Trúc Thư Mục
 
-Hiện tại hệ thống Spark train 3 model cho bài toán phân loại nhị phân:
-
-- `logistic_regression`
-- `random_forest`
-- `decision_tree`
-
-Mỗi model được đánh giá theo các metric:
-
-- `accuracy`
-- `f1`
-- `roc_auc`
-
-Kết quả được sắp hạng theo thứ tự ưu tiên: `f1` -> `roc_auc` -> `accuracy`.
-
-## Cách Chỉnh Sửa Model
-
-Bạn chỉnh trực tiếp trong file `brfss_pipeline/streaming/spark_io.py`, hàm `train_spark_models(...)`, tại biến `estimators`.
-
-Bạn có thể:
-
-- đổi hyperparameter (ví dụ `maxIter`, `numTrees`, `maxDepth`)
-- thêm model mới
-- xóa model không dùng
-
-Ví dụ:
-
-```python
-estimators = {
-  "logistic_regression": LogisticRegression(
-    featuresCol="features", labelCol="label", maxIter=80, regParam=0.05
-  ),
-  "random_forest": RandomForestClassifier(
-    featuresCol="features", labelCol="label", numTrees=80, maxDepth=12, seed=42
-  ),
-  "decision_tree": DecisionTreeClassifier(
-    featuresCol="features", labelCol="label", maxDepth=10, seed=42
-  ),
-}
+```text
+BRFSS Big Data Analytics
+├─ full_pipeline.py
+├─ pipeline_config.json
+├─ brfss_pipeline/
+│  ├─ data/
+│  ├─ pipeline/
+│  └─ streaming/
+├─ BI/
+│  ├─ bi_analysis.py
+│  ├─ bi_analysis.ipynb
+│  └─ bi_dashboard.py
+├─ data/
+│  ├─ raw/
+│  └─ processed/
+└─ outputs/
+   ├─ logs/
+   └─ metrics/
 ```
 
-Sau khi sửa model, chạy lại pipeline:
+## Troubleshooting
 
-```powershell
-py full_pipeline.py
-```
+- Nếu báo thiếu dữ liệu, kiểm tra `data/raw/BRFSS.csv` đã tồn tại chưa.
+- Nếu muốn bỏ Kafka, đặt `use_kafka=false` trong `pipeline_config.json`.
+- Nếu dashboard không mở, kiểm tra port mặc định `8501` có bị chiếm không.
+- Nếu thiếu package, cài lại bằng `pip install -r requirements-bigdata.txt`.
+- Nếu Spark/JVM lỗi, chạy lại trong đúng virtual environment và kiểm tra cấu hình local machine.
 
-Hoặc chỉ train Spark:
+## Ghi Chú
 
-```powershell
-python -m brfss_pipeline.cli spark-train --input-path data/processed/selected_columns.csv --output-path outputs/metrics/spark_metrics.json
-```
-
-Lưu ý: `pipeline_config.json` hiện chưa cấu hình danh sách model. Nếu muốn đổi model, bạn cần sửa trong code ở `spark_io.py`.
-
-## Lệnh CLI Bổ Sung
-
-```powershell
-python -m brfss_pipeline.cli run-all --use-kafka
-python -m brfss_pipeline.cli spark-train --input-path data/processed/selected_columns.csv --output-path outputs/metrics/spark_metrics.json
-python -m brfss_pipeline.cli run-all --use-kafka --runtime-metadata-path outputs/metrics/pipeline_runtime.json
-```
+- File `BI/RUN_BI.md` vẫn hữu ích nếu cần hướng dẫn chạy BI từng bước.
+- `BI/BI_SUMMARY.md` phù hợp khi muốn xem tóm tắt nhanh các phần BI đã hoàn thành.
+- Nếu cần mở rộng pipeline, điểm chỉnh chính nằm ở `brfss_pipeline/data/feature_selection.py`, `brfss_pipeline/streaming/spark_io.py` và `pipeline_config.json`.
