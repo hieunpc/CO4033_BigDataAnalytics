@@ -100,19 +100,6 @@ Phần BI (Business Intelligence) của dự án này tập trung vào việc tr
 - Bước 2: Chuẩn bị dữ liệu
 - Bước 3: Chạy pipeline
 - Bước 4: Chạy BI (3 cách)
-- Bước 5: Dọn dẹp máy
-
-### Giải Phóng Dung Lượng Máy
-**🧹 Chạy script clear_data.py** để dọn dẹp:
-```powershell
-.venv\Scripts\activate
-python clear_data.py
-```
-Script sẽ:
-- Xóa __pycache__, .pytest_cache, .ipynb_checkpoints
-- Xóa temp files, logs
-- Giữ lại dữ liệu quan trọng (raw, processed, metrics)
-- Hiển thị dung lượng giải phóng
 
 ### Troubleshooting
 - **Nếu pipeline fail**: Kiểm tra Kafka server (nếu use_kafka=true). Lỗi Kafka không ảnh hưởng BI vì dữ liệu vẫn xử lý được ở Step 1
