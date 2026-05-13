@@ -43,16 +43,30 @@ if metrics_path.exists():
     with open(metrics_path, 'r') as f:
         metrics = json.load(f)
     print("\nPipeline Metrics:")
-    for key, value in metrics.items():
-        print(f"{key}: {value}")
+    if isinstance(metrics, list):
+        for model_result in metrics:
+            print(f"  Model: {model_result.get('model', 'N/A')}")
+            for k, v in model_result.items():
+                if k != 'model':
+                    print(f"    {k}: {v}")
+    elif isinstance(metrics, dict):
+        for key, value in metrics.items():
+            print(f"{key}: {value}")
 
 spark_metrics_path = Path(config["spark_metrics_path"])
 if spark_metrics_path.exists():
     with open(spark_metrics_path, 'r') as f:
         spark_metrics = json.load(f)
     print("\nSpark Metrics:")
-    for key, value in spark_metrics.items():
-        print(f"{key}: {value}")
+    if isinstance(spark_metrics, list):
+        for model_result in spark_metrics:
+            print(f"  Model: {model_result.get('model', 'N/A')}")
+            for k, v in model_result.items():
+                if k != 'model':
+                    print(f"    {k}: {v}")
+    elif isinstance(spark_metrics, dict):
+        for key, value in spark_metrics.items():
+            print(f"{key}: {value}")
 
 # Load existing plots
 plot_dir = Path(config["plot_dir"])

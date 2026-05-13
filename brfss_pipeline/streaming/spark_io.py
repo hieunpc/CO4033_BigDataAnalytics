@@ -280,14 +280,15 @@ def save_metric_bar_charts(results: List[Dict[str, float]], output_dir: str | Pa
         values = [float(result.get(metric_name, float("nan"))) for result in results]
         safe_values = [0.0 if np.isnan(value) else value for value in values]
         plt.figure(figsize=(8, 4))
-        plt.bar(model_names, safe_values, color="#1d3557")
-        plt.ylim(0, 1)
+        bars = plt.bar(model_names, safe_values, color="#1d3557")
+        plt.ylim(0, 1.15)
         plt.title(f"Spark Model Comparison: {metric_name.upper()}")
         plt.ylabel(metric_name)
+        # Place labels clearly above bars with extra space
         for index, value in enumerate(values):
             label = "nan" if np.isnan(value) else f"{value:.3f}"
-            plt.text(index, safe_values[index] + 0.01, label, ha="center", va="bottom", fontsize=8)
-        plt.tight_layout()
+            plt.text(index, safe_values[index] + 0.03, label, ha="center", va="bottom", fontsize=9, fontweight='bold')
+        plt.tight_layout(pad=1.5)
         chart_path = output_dir / f"spark_metric_{metric_name}.png"
         plt.savefig(chart_path, dpi=150)
         plt.close()
